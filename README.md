@@ -46,8 +46,7 @@ Locking Algorithm
 
 * Set value in Redis if it does not exist
 * If it exists, wait up to 100 times until :timeout has been met
-* Once waiting for lock has finished, either:
-** Pessimistically throw an exception if not met
-** Overwrite existing token with new value and assume ownership
+* Pessimistically throw an exception if lock was not released and configured to do so
+* Overwrite existing token with new value and assume ownership if configured to do so
 * Run block of code
 * Release lock if it contains the same value that it was set to
