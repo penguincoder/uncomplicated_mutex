@@ -3,7 +3,7 @@ Uncomplicated Mutex
 
 A transactional mutex based in Redis for Ruby. It works across processes, threads, and machines provided you can all access the same Redis server.
 
-This is subtely different from two related projects here on Github: kenn/redis-mutex and dv/redis-semaphore
+This is subtely different from two related projects here on Github: https://github.com/kenn/redis-mutex and https://github.com/dv/redis-semaphore
 
 RedisMutex uses a polling interval and raises an exception on lock timeout. RedisSemaphore uses `blpop` to wait until a value is pushed into a list. I have noticed several issues with the two approaches. I have had jobs continue to run for days with RedisSemaphore due to random and unknown failures. RedisMutex raises an exception, and in my situation, I do not need an exception, I would prefer to assume that the previous job has failed and that execution should continue.
 
