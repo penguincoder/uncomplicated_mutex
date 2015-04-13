@@ -12,12 +12,13 @@ Major Features
 
 * Uses your own Redis or Redis::Namespace instance
 * Uses Redis `SET` using Lua transactions based on documentation from http://redis.io/commands/SET for a simple locking pattern.
-* It can either _pessimistically_ or _optimistically_ fail. In other words, it will raise an exception if you want and ignore the timeout and continue to run otherwise.
-* It uses a fixed number of ticks (or cycles) of wait that are calculated on initialization.
+* It sleeps a random amount less than one second until such time that the timed out time has been met.
+* When many processes are struggling to get a single lock, if a different process has taken control of the lock when the timeout is met, the timeout is automatically reset. This allows differentiation between a stuck lock and locks with lots of processes struggling to get the lock.
+* It pessimistically fails by raising an exception if the timeout has been met.
 * A lock will not overwrite a value in Redis if the value was changed from the lock's "secret" token.
 * It requires that objects to be locked respond to the method `id`.
 
-I take many feathers from the cap of Martin Fowler when I wrote this gem. Once initialized, variables contents never change. Methods are not longer than 10 lines. Method names are very specific yet not too long. Methods are alphabetized in the class definition (except the initializer). Tests are included.
+I took many feathers from the cap of Martin Fowler when I wrote this gem. Once initialized, variables contents never change. Methods are not longer than 10 lines. Method names are very specific yet not too long. Methods are alphabetized in the class definition (except the initializer). Tests are included.
 
 Usage
 =====
@@ -25,7 +26,7 @@ Usage
 A number of options are available on initialization:
 
 |Option|Default value|Description|
-|fail_on_timeout|`false`|Raise an exception if mutex lock is not acquired in the requested time|
+|------|-------------|-----------|
 |redis|`Redis.new`  Redis connection to use|
 |ticks|`100`|Number of times to wait during the timeout period|
 |timeout|`300`|Time, in seconds, to wait until lock is considered stale|
@@ -44,9 +45,9 @@ This pattern works very well in Sidekiq or Resque. Also, if you need to access t
 Locking Algorithm
 =================
 
-* Set value in Redis if it does not exist
-* If it exists, wait up to 100 times until :timeout has been met
-* Pessimistically throw an exception if lock was not released and configured to do so
-* Overwrite existing token with new value and assume ownership if configured to do so
+* Set value in Redis if it does not exist.
+* If it exists, wait until :timeout has been met.
+* If a different process still holds the lock, update the secret token and reset the timeout.
+* If the original process still holds the lock, throw an exception.
 * Run block of code
 * Release lock if it contains the same value that it was set to

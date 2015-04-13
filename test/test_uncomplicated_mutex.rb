@@ -54,21 +54,6 @@ class TestUncomplicatedMutex < Minitest::Test
     end
   end
 
-  def test_exception_is_not_thrown
-    begin
-      @redis.set(@lock_name, 1)
-      @mutex2.lock do
-        sleep 1.05
-      end
-    rescue UncomplicatedMutex::MutexTimeout
-      flunk "Exception thrown"
-    else
-      pass "Exception was not thrown"
-    ensure
-      @redis.del(@lock_name)
-    end
-  end
-
   def test_lock_is_not_overwritten
     @mutex1.lock do
       @redis.set(@lock_name, 'abc123')

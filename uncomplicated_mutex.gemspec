@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'uncomplicated_mutex'
-  s.version     = '1.0.1'
-  s.date        = '2014-12-22'
+  s.version     = '1.1.0'
+  s.date        = '2015-04-13'
   s.summary     = 'Redis. Lua. Mutex.'
   s.description = 'A mutex that uses Redis that is also not complicated.'
   s.authors     = [ 'Andrew Coleman' ]

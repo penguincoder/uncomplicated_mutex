@@ -12,17 +12,19 @@ class UncomplicatedMutex
   def initialize(obj, opts = {})
     @verbose          = opts[:verbose]
     @timeout          = opts[:timeout] || 300
-    @fail_on_timeout  = opts[:fail_on_timeout]
-    @ticks            = opts[:ticks] || 100
-    @wait_tick        = @timeout.to_f / @ticks.to_f
     @redis            = opts[:redis] || Redis.new
     @lock_name        = "lock:#{obj.class.name}:#{obj.id}".squeeze(":")
     @token            = Digest::MD5.new.hexdigest("#{@lock_name}_#{Time.now.to_f}")
+    set_expiration_time
   end
 
   def acquire_mutex
     puts("Running transaction to acquire the lock #{@lock_name}") if @verbose
     @redis.eval(LUA_ACQUIRE, [ @lock_name ], [ @timeout, @token ]) == 1
+  end
+
+  def current_token_value
+    @redis.get(@lock_name)
   end
 
   def destroy_mutex
@@ -39,13 +41,9 @@ class UncomplicatedMutex
     end
   end
 
-  def overwrite_mutex
-    puts("Replacing the lock #{@lock_name} with #{@token}") if @verbose
-    @redis.set(@lock_name, @token)
-  end
-
   def recurse_until_ready(depth = 1)
-    return false if depth == @ticks
+    return false if time_has_expired
+    @initial_token = current_token_value if depth == 1
     wait_a_tick if depth > 1
     acquire_mutex || recurse_until_ready(depth + 1)
   end
@@ -55,9 +53,37 @@ class UncomplicatedMutex
     @redis.eval(LUA_RELEASE, [ @lock_name ], [ @token ])
   end
 
+  def same_token_as_before
+    new_token = current_token_value
+    if new_token == @initial_token
+      true
+    else
+      @initial_token = new_token
+      false
+    end
+  end
+
+  def set_expiration_time
+    @expiration_time = Time.now.to_i + @timeout
+  end
+
+  def time_has_expired
+    if Time.now.to_i > @expiration_time
+      if same_token_as_before
+        true
+      else
+        set_expiration_time
+        false
+      end
+    else
+      false
+    end
+  end
+
   def wait_a_tick
-    puts("Sleeping #{@wait_tick} for the lock #{@lock_name} to become available") if @verbose
-    sleep(@wait_tick)
+    sleep_time = rand(100).to_f / 100.0
+    puts("Sleeping #{sleep_time} for the lock #{@lock_name} to become available") if @verbose
+    sleep(sleep_time)
   end
 
   def wait_for_mutex
@@ -65,8 +91,7 @@ class UncomplicatedMutex
       puts("Acquired lock #{@lock_name}") if @verbose
     else
       puts("Failed to acquire the lock") if @verbose
-      raise MutexTimeout.new("Failed to acquire the lock") if @fail_on_timeout
-      overwrite_mutex
+      raise MutexTimeout.new("Failed to acquire the lock")
     end
   end
 end
