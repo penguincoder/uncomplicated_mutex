@@ -13,7 +13,7 @@ class UncomplicatedMutex
     @verbose          = opts[:verbose]
     @timeout          = opts[:timeout] || 300
     @redis            = opts[:redis] || Redis.new
-    @lock_name        = "lock:#{obj.class.name}:#{obj.id}".squeeze(":")
+    @lock_name        = opts[:lock_name] || "lock:#{obj.class.name}:#{obj.id}".squeeze(":")
     @token            = Digest::MD5.new.hexdigest("#{@lock_name}_#{Time.now.to_f}")
     set_expiration_time
   end
